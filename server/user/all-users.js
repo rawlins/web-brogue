@@ -26,6 +26,7 @@ module.exports = {
             sessionID : userCount + bCrypt.hashSync(userName + hiddenSalt, bCrypt.genSaltSync(8)),
             brogueState : brogueState.INACTIVE,
             brogueProcess : null,
+            brogueSocket : null,
             lastUpdateTime : process.hrtime(),
             lobbyData : {
                 idle : 0,

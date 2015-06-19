@@ -3,6 +3,8 @@ var config = require('../config');
 var childProcess = require('child_process');
 var path = require('path');
 var fs = require('fs');
+var crypto = require('crypto');
+var net = require('net');
 
 var router = require('./router');
 var Controller = require('./controller-base');
@@ -72,8 +74,8 @@ _.extend(BrogueController.prototype, {
             return;
         }
  
-        if (this.brogueChild) {
-            this.brogueChild.stdin.write(message);
+        if (this.brogueSocket) {
+            this.brogueSocket.write(message);
         }
     },
     
@@ -89,7 +91,7 @@ _.extend(BrogueController.prototype, {
         start: function (data) {
             var currentUserName = this.controllers.auth.currentUserName;
 
-            if (!currentUserName || this.brogueChild) {
+            if (!currentUserName || this.brogueSocket) {
                 return;
             }
 
@@ -179,39 +181,27 @@ _.extend(BrogueController.prototype, {
         var options = {            
             cwd: childWorkingDir
         };
-        this.brogueChild = childProcess.spawn(config.path.BROGUE, args, options);
+        var socatCmd = "socat";
+        var brogueCmd = config.path.BROGUE + " " + args.join(" ");
+
+        var socketName = "/run/brogue/" + crypto.createHash("md5").update(this.controllers.auth.currentUserName).digest("hex");
+
+        var socatArgs = [ "UNIX-LISTEN:" + socketName, "EXEC:'" + brogueCmd + "'" ];
+
+        console.error(socketName);
+        console.error(socatArgs.join(' '));
+
+        this.brogueChild = childProcess.spawn(socatCmd, socatArgs, options);
         allUsers.users[this.controllers.auth.currentUserName].brogueProcess = this.brogueChild;
         this.attachChildEvents();
-        this.controllers.lobby.stopUserDataListen();
-        this.setState(brogueState.PLAYING);
-    },
-    
-    commandeerUserChildProcess : function(userName){
-        this.brogueChild = allUsers.users[this.controllers.auth.currentUserName].brogueProcess;
-        this.attachChildEvents();
-        this.controllers.lobby.stopUserDataListen();
-        this.setState(brogueState.PLAYING);
-    },
 
-    attachChildEvents: function () {
+        //Setup the stdin / stdout bridge
+        this.brogueSocket = net.createConnection(socketName);
+        allUsers.users[this.controllers.auth.currentUserName].brogueSocket = this.brogueSocket;
+
         var self = this;
-
-        self.brogueChild.on('exit', function(code){
-            // go back to lobby in the event something happens to the child process
-            self.brogueChild = null;
-            allUsers.users[self.controllers.auth.currentUserName].brogueProcess = null;
-            self.sendMessage("quit", true);
-            self.setState(brogueState.INACTIVE);
-            self.controllers.lobby.sendAllUserData();
-            self.controllers.lobby.userDataListen();
-        });
-
-        self.brogueChild.on('error', function(err){
-            self.controller.error.send('Message could not be sent to brogue process - Error: ' + err);
-        });
-
-        self.brogueChild.stdout.on('data', function (data) {
-
+        
+        this.brogueSocket.on("data", function(data) {
             // Ensure that we send out data in chunks divisible by CELL_MESSAGE_SIZE and save any left over for the next data event
             // While it would be more efficient to accumulate all the data here on the server, I want the client to be able to start processing this data as it is being returned.
             var dataLength = data.length;
@@ -220,7 +210,7 @@ _.extend(BrogueController.prototype, {
             var sizeOfCellsToSend = numberOfCellsToSend * CELL_MESSAGE_SIZE;
             var newReminderLength = dataLength + remainderLength - sizeOfCellsToSend;
 
-            //fill the data to send 
+            //fill the data to send
             self.dataAccumulator = new Buffer(sizeOfCellsToSend);
             self.dataRemainder.copy(self.dataAccumulator);
             data.copy(self.dataAccumulator, remainderLength, 0, dataLength - newReminderLength);
@@ -233,22 +223,54 @@ _.extend(BrogueController.prototype, {
             for (var i = 0; i < sizeOfCellsToSend; i += CELL_MESSAGE_SIZE){
                 if (self.dataAccumulator[i] === STATUS_BYTE_FLAG){
                     var updateFlag = self.dataAccumulator[i + STATUS_DATA_OFFSET];
-                    
+
                     // We need to send 4 bytes over as unsigned long.  JS bitwise operations force a signed long, so we are forced to use a float here.
-                    var updateValue = 
-                            self.dataAccumulator[i + STATUS_DATA_OFFSET + 1] * 16777216 +
-                            self.dataAccumulator[i + STATUS_DATA_OFFSET + 2] * 65536 +
-                            self.dataAccumulator[i + STATUS_DATA_OFFSET + 3] * 256 +
-                            self.dataAccumulator[i + STATUS_DATA_OFFSET + 4]
-                    
+                    var updateValue =
+                        self.dataAccumulator[i + STATUS_DATA_OFFSET + 1] * 16777216 +
+                        self.dataAccumulator[i + STATUS_DATA_OFFSET + 2] * 65536 +
+                        self.dataAccumulator[i + STATUS_DATA_OFFSET + 3] * 256 +
+                        self.dataAccumulator[i + STATUS_DATA_OFFSET + 4];
+
                     allUsers.updateLobbyStatus(
-                            self.controllers.auth.currentUserName,
-                            updateFlag,
-                            updateValue);
+                        self.controllers.auth.currentUserName,
+                        updateFlag,
+                        updateValue);
                 }
             }
 
             self.ws.send(self.dataAccumulator, {binary: true}, self.defaultSendCallback.bind(self));
+        });
+        //todo: handle errors
+
+        this.controllers.lobby.stopUserDataListen();
+        this.setState(brogueState.PLAYING);
+    },
+    
+    commandeerUserChildProcess : function(userName){
+        //This won't work for now
+        this.brogueChild = allUsers.users[this.controllers.auth.currentUserName].brogueProcess;
+        this.attachChildEvents();
+        this.controllers.lobby.stopUserDataListen();
+        this.setState(brogueState.PLAYING);
+    },
+
+    attachChildEvents: function () {
+        var self = this;
+
+        self.brogueChild.on('exit', function(code){
+            // go back to lobby in the event something happens to the child process
+            self.brogueChild = null;
+            self.brogueSocket = null;
+            allUsers.users[self.controllers.auth.currentUserName].brogueProcess = null;
+            allUsers.users[self.controllers.auth.currentUserName].brogueSocket = null;
+            self.sendMessage("quit", true);
+            self.setState(brogueState.INACTIVE);
+            self.controllers.lobby.sendAllUserData();
+            self.controllers.lobby.userDataListen();
+        });
+
+        self.brogueChild.on('error', function(err){
+            self.controller.error.send('Message could not be sent to brogue process - Error: ' + err);
         });
     }
 });
