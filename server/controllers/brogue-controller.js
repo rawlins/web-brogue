@@ -77,6 +77,9 @@ _.extend(BrogueController.prototype, {
         if (this.brogueSocket) {
             this.brogueSocket.write(message);
         }
+        else {
+            this.connectToBrogueSocket();
+        }
     },
     
     handleIncomingJSONMessage: function (message) {
@@ -176,31 +179,48 @@ _.extend(BrogueController.prototype, {
         this.currentState = state;
         allUsers.users[this.controllers.auth.currentUserName].brogueState = state;
     },
+
+    brogueSocketName: function (usernameSeed) {
+        return "/run/brogue/" + crypto.createHash("md5").update(usernameSeed).digest("hex");
+    },
     
     spawnChildProcess: function (args, childWorkingDir) {
-        var options = {            
-            cwd: childWorkingDir
+        var options = {
+            cwd: childWorkingDir,
+            detached: true,
+            stdio: ["ignore", "ignore", "ignore"]
         };
         var socatCmd = "socat";
         var brogueCmd = config.path.BROGUE + " " + args.join(" ");
 
-        var socketName = "/run/brogue/" + crypto.createHash("md5").update(this.controllers.auth.currentUserName).digest("hex");
+        var socketName = this.brogueSocketName(this.controllers.auth.currentUserName);
 
-        var socatArgs = [ "UNIX-LISTEN:" + socketName, "EXEC:'" + brogueCmd + "'" ];
+        var socatArgs = ["UNIX-LISTEN:" + socketName, "EXEC:'" + brogueCmd + "'"];
 
         console.error(socketName);
         console.error(socatArgs.join(' '));
 
         this.brogueChild = childProcess.spawn(socatCmd, socatArgs, options);
+        this.brogueChild.unref();
+
         allUsers.users[this.controllers.auth.currentUserName].brogueProcess = this.brogueChild;
         this.attachChildEvents();
 
+        //If connecting to the socket fails then we will retry on each binary data packet from the client
+        //This is a race between us accessing the socket and socat making it
+        //It would be nicer to have a callback on new file creation in /run/brogue
+        this.connectToBrogueSocket();
+        //todo - probably don't need the above
+    },
+
+    connectToBrogueSocket: function() {
+
         //Setup the stdin / stdout bridge
-        this.brogueSocket = net.createConnection(socketName);
+        this.brogueSocket = net.createConnection(this.brogueSocketName(this.controllers.auth.currentUserName));
         allUsers.users[this.controllers.auth.currentUserName].brogueSocket = this.brogueSocket;
 
         var self = this;
-        
+
         this.brogueSocket.on("data", function(data) {
             // Ensure that we send out data in chunks divisible by CELL_MESSAGE_SIZE and save any left over for the next data event
             // While it would be more efficient to accumulate all the data here on the server, I want the client to be able to start processing this data as it is being returned.
@@ -240,7 +260,11 @@ _.extend(BrogueController.prototype, {
 
             self.ws.send(self.dataAccumulator, {binary: true}, self.defaultSendCallback.bind(self));
         });
-        //todo: handle errors
+        this.brogueSocket.on("error", function(error) {
+            console.error("socket error " + error.toString());
+            self.brogueSocket.destroy();
+            self.brogueSocket = null;
+        });
 
         this.controllers.lobby.stopUserDataListen();
         this.setState(brogueState.PLAYING);
