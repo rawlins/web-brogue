@@ -89,14 +89,21 @@ button {
 .mini-scores,
 .all-scores {
     margin: 0 2.5%;
-    width: 225px;
     box-sizing: border-box;
     -moz-box-sizing: border-box;
     word-wrap:break-word;
 }
 
-.auth form{
-    width: 225px;
+.auth,
+.play,
+.about,
+.lobby-chat
+{
+    width: 325px;
+}
+
+.auth form {
+    width: 100%;
     margin: 0 auto;
 }
 
@@ -104,12 +111,12 @@ button {
     width: 100%;
 }
 
-.auth button{
+.auth button {
     float: right;
 }
 
 .lobby-chat form {
-    width: 225px;
+    width: 100%;
     margin: 0 auto;
 }
 
@@ -121,13 +128,22 @@ button {
     float: right;
 }
 
+.lobby-chat-messages {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    height: 20vh;
+    max-height: 20vh;
+    overflow: auto;
+}
+
 .current-games,
 .saved-games,
 .mini-scores,
 .all-scores {
     width: 100%;
 }
-
+/*
 .current-games table,
 .saved-games table,
 .mini-scores table,
@@ -144,17 +160,13 @@ button {
 .all-scores th,
 .all-scores td {
     text-align: left;
-}
+}*/
 
 @media screen and (min-width: 700px){
     .banner {
         width: auto;
         margin-left: auto;
         margin-right: auto;
-    }
-
-    .about{
-        width: 225px;
     }
 
     .auth,
@@ -169,7 +181,7 @@ button {
         margin: 0 10%;
     }
 
-    .auth.logged-in{
+    .auth.logged-in {
         float: none;
         clear: both;
         width: auto;
@@ -181,10 +193,10 @@ button {
     .mini-scores,
     .all-scores {
         margin: 0 2.5% 0 7.5%;
-        padding-left: 250px;
-        width: -moz-calc(100% - 250px);
-        width: -webkit-calc(100% - 250px);
-        width: calc(100% - 250px);
+        padding-left: 50px;
+        width: -moz-calc(100% - 1050px);
+        width: -webkit-calc(100% - 1050px);
+        width: calc(100% - 1050px);
     }
 }
 
