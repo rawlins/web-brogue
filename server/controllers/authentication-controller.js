@@ -146,7 +146,7 @@ _.extend(AuthController.prototype, {
                     // TODO: should not send errors to the client
                     fs.mkdir(config.path.GAME_DATA_DIR + data.username, 0755, function (err) {
 
-                        if (err.code != "EEXIST") {
+                        if (err && err.code != "EEXIST") {
                             self.controllers.error.send(JSON.stringify(err));
                         }
 
