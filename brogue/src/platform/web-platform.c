@@ -16,6 +16,7 @@
 
 #define OUTPUT_SIZE             10
 #define EVENT_SIZE              100
+#define INVENTORY_SIZE          13020
 #define MAX_INPUT_SIZE          5
 #define MOUSE_INPUT_SIZE        4
 #define KEY_INPUT_SIZE          4
@@ -48,6 +49,7 @@ static void setup_sockets();
 static int read_from_socket(char *buf, int size);
 static void write_to_socket(char *buf, int size);
 static void flush_output_buffer();
+static void send_inventory_update();
 
 static void gameLoop()
 {
@@ -234,6 +236,7 @@ static void web_nextKeyOrMouseEvent(rogueEvent *returnEvent, boolean textInput, 
     // Send a status update of game variables we want on the client
     if(!refresh_screen_only) {
       sendStatusUpdate();
+      send_inventory_update();
     }
     refresh_screen_only = 0;
 
@@ -335,6 +338,25 @@ static void notify_event(short eventId, int data1, int data2, const char *str1, 
 
   write_to_socket(statusOutputBuffer, EVENT_SIZE);
   flush_output_buffer();
+}
+
+static void send_inventory_update() {
+
+  char statusOutputBuffer[INVENTORY_SIZE];
+
+  // Coordinates of (254, 253) will let the server and client know that this is an inventory notification update rather than a cell update
+  statusOutputBuffer[0] = 254;
+  statusOutputBuffer[1] = 253;
+
+  // The event id
+  populateInventory(statusOutputBuffer + 2);
+  write_to_log("send inventory\n");
+  char msg[80];
+  sprintf(msg, "%i", strlen(statusOutputBuffer));
+
+  //write_to_log(msg);
+  write_to_log(statusOutputBuffer);
+
 }
 
 struct brogueConsole webConsole = {

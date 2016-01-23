@@ -2982,6 +2982,7 @@ extern "C" {
     void checkForDisenchantment(item *theItem);
     void updateFloorItems();
 	void itemName(item *theItem, char *root, boolean includeDetails, boolean includeArticle, color *baseColor);
+	void populateInventory(char *buffer);
 	char displayInventory(unsigned short categoryMask,
 						  unsigned long requiredFlags,
 						  unsigned long forbiddenFlags,

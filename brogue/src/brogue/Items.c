@@ -2624,6 +2624,168 @@ boolean displayMagicCharForItem(item *theItem) {
     }
 }
 
+void populateInventory(char *buffer) {
+
+	item *theItem;
+  	short i, j, m, maxLength = 0, itemNumber, itemCount, equippedItemCount;
+  	short extraLineCount = 0;
+  	item *itemList[DROWS];
+  	char buf[COLS*3];
+  	char theKey;
+  	rogueEvent theEvent;
+  	boolean magicDetected, repeatDisplay;
+  	short highlightItemLine, itemSpaceRemaining;
+  	brogueButton buttons[50] = {{{0}}};
+  	short actionKey;
+  	color darkItemColor;
+
+  	char whiteColorEscapeSequence[20],
+  	grayColorEscapeSequence[20],
+  	yellowColorEscapeSequence[20],
+  	darkYellowColorEscapeSequence[20],
+  	goodColorEscapeSequence[20],
+  	badColorEscapeSequence[20];
+  	char *magicEscapePtr;
+
+  	whiteColorEscapeSequence[0] = '\0';
+  	encodeMessageColor(whiteColorEscapeSequence, 0, &white);
+  	grayColorEscapeSequence[0] = '\0';
+  	encodeMessageColor(grayColorEscapeSequence, 0, &gray);
+  	yellowColorEscapeSequence[0] = '\0';
+  	encodeMessageColor(yellowColorEscapeSequence, 0, &itemColor);
+  	darkItemColor = itemColor;
+  	applyColorAverage(&darkItemColor, &black, 50);
+  	darkYellowColorEscapeSequence[0] = '\0';
+  	encodeMessageColor(darkYellowColorEscapeSequence, 0, &darkItemColor);
+  	goodColorEscapeSequence[0] = '\0';
+  	encodeMessageColor(goodColorEscapeSequence, 0, &goodMessageColor);
+  	badColorEscapeSequence[0] = '\0';
+  	encodeMessageColor(badColorEscapeSequence, 0, &badMessageColor);
+
+  	if (packItems->nextItem == NULL) {
+  		buffer[0] = 0;
+  		return;
+  	}
+
+  	magicDetected = false;
+  	for (theItem = packItems->nextItem; theItem != NULL; theItem = theItem->nextItem) {
+  		if (displayMagicCharForItem(theItem) && (theItem->flags & ITEM_MAGIC_DETECTED)) {
+  			magicDetected = true;
+  		}
+  	}
+
+  	// List the items in the order we want to display them, with equipped items at the top.
+  	itemNumber = 0;
+  	equippedItemCount = 0;
+  	// First, the equipped weapon if any.
+  	if (rogue.weapon) {
+  		itemList[itemNumber] = rogue.weapon;
+  		itemNumber++;
+  		equippedItemCount++;
+  	}
+  	// Now, the equipped armor if any.
+  	if (rogue.armor) {
+  		itemList[itemNumber] = rogue.armor;
+  		itemNumber++;
+  		equippedItemCount++;
+  	}
+  	// Now, the equipped rings, if any.
+  	if (rogue.ringLeft) {
+  		itemList[itemNumber] = rogue.ringLeft;
+  		itemNumber++;
+  		equippedItemCount++;
+  	}
+  	if (rogue.ringRight) {
+  		itemList[itemNumber] = rogue.ringRight;
+  		itemNumber++;
+  		equippedItemCount++;
+  	}
+  	// Now all of the non-equipped items.
+  	for (theItem = packItems->nextItem; theItem != NULL; theItem = theItem->nextItem) {
+  		if (!(theItem->flags & ITEM_EQUIPPED)) {
+  			itemList[itemNumber] = theItem;
+  			itemNumber++;
+  		}
+  	}
+
+  	// Initialize the buttons:
+  	for (i=0; i < max(MAX_PACK_ITEMS, ROWS); i++) {
+  		buttons[i].y = mapToWindowY(i + (equippedItemCount && i >= equippedItemCount ? 1 : 0));
+  		buttons[i].buttonColor = black;
+  		buttons[i].opacity = INTERFACE_OPACITY;
+  		buttons[i].flags |= B_DRAW;
+  	}
+  	// Now prepare the buttons.
+  	//for (theItem = packItems->nextItem; theItem != NULL; theItem = theItem->nextItem) {
+      const char closeParen = KEYBOARD_LABELS ? ')' : ' ';
+  	for (i=0; i<itemNumber; i++) {
+  		theItem = itemList[i];
+  		// Set button parameters for the item:
+  		buttons[i].flags |= (B_DRAW | B_GRADIENT | B_ENABLED);
+
+  		buttons[i].hotkey[0] = theItem->inventoryLetter;
+  		buttons[i].hotkey[1] = theItem->inventoryLetter + 'A' - 'a';
+
+  		// Set the text for the button:
+  		itemName(theItem, buf, true, true, (buttons[i].flags & B_HOVER_ENABLED) ? &white : &gray);
+  		upperCase(buf);
+
+  			sprintf(buttons[i].text, " %c%c %s%s* %s%s%s%s", // The '*' is the item character, e.g. ':' for food.
+  					KEYBOARD_LABELS ? theItem->inventoryLetter : ' ',
+  					(theItem->flags & ITEM_PROTECTED ? '}' : closeParen),
+  					(magicDetected ? "  " : ""), // For proper spacing when this item is not detected but another is.
+  					(buttons[i].flags & B_HOVER_ENABLED) ? yellowColorEscapeSequence : darkYellowColorEscapeSequence,
+  					(buttons[i].flags & B_HOVER_ENABLED) ? whiteColorEscapeSequence : grayColorEscapeSequence,
+  					buf,
+  					grayColorEscapeSequence,
+  					(theItem->flags & ITEM_EQUIPPED ? ((theItem->category & WEAPON) ? " (in hand) " : " (worn) ") : ""));
+  			buttons[i].symbol[0] = theItem->displayChar;
+
+  		// Keep track of the maximum width needed:
+  		maxLength = max(maxLength, strLenWithoutEscapes(buttons[i].text));
+
+          //		itemList[itemNumber] = theItem;
+          //
+          //		itemNumber++;
+  	}
+  	//printf("\nMaxlength: %i", maxLength);
+  	itemCount = itemNumber;
+
+  	if (equippedItemCount) {
+  		// Add a separator button to fill in the blank line between equipped and unequipped items.
+  		sprintf(buttons[itemNumber + extraLineCount].text, "      %s%s---",
+  				(magicDetected ? "  " : ""),
+  				grayColorEscapeSequence);
+  		buttons[itemNumber + extraLineCount].y = mapToWindowY(equippedItemCount);
+  		extraLineCount++;
+  	}
+
+  	for (i=0; i < itemNumber + extraLineCount; i++) {
+
+  		// Position the button.
+  		buttons[i].x = COLS - maxLength;
+
+  		// Pad the button label with space, so the button reaches to the right edge of the screen.
+  		m = strlen(buttons[i].text);
+  		for (j=buttons[i].x + strLenWithoutEscapes(buttons[i].text); j < COLS; j++) {
+  			buttons[i].text[m] = ' ';
+  			m++;
+  		}
+  		buttons[i].text[m] = '\0';
+  	}
+
+
+  	char *outputBufferLoc = buffer;
+
+  	for(i = 0; i < itemNumber + extraLineCount; i++) {
+
+  		int thisButtonLen = min(strlen(buttons[i].text), 50);
+  		strncpy(outputBufferLoc, buttons[i].text, thisButtonLen + 1);
+  		//sprintf(outputBufferLoc, "%s", "helkl");
+  		outputBufferLoc += thisButtonLen + 1;
+  	}
+}
+
 char displayInventory(unsigned short categoryMask,
 					  unsigned long requiredFlags,
 					  unsigned long forbiddenFlags,
