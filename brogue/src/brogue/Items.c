@@ -2780,10 +2780,11 @@ void populateInventory(char *buffer) {
   	for(i = 0; i < itemNumber + extraLineCount; i++) {
 
   		int thisButtonLen = min(strlen(buttons[i].text), 50);
-  		strncpy(outputBufferLoc, buttons[i].text, thisButtonLen + 1);
-  		//sprintf(outputBufferLoc, "%s", "helkl");
+  		strncpy(outputBufferLoc, buttons[i].text, thisButtonLen);
+  		outputBufferLoc[thisButtonLen] = '\n';
   		outputBufferLoc += thisButtonLen + 1;
   	}
+  	*outputBufferLoc = '\0';
 }
 
 char displayInventory(unsigned short categoryMask,

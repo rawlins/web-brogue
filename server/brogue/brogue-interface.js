@@ -16,6 +16,9 @@ var CLIENT_SOCKET = 'client-socket';
 
 var CELL_MESSAGE_SIZE = 10;
 
+var INVENTORY_BYTE_FLAG = 253;
+var INVENTORY_DATA_OFFSET = 2;
+
 var EVENT_BYTE_FLAG = 254;
 var EVENT_DATA_OFFSET = 2;
 var EVENT_DATA_LENGTH = 100;
@@ -293,7 +296,7 @@ BrogueInterface.prototype.attachChildEvents = function () {
         //check for status updates in data and update user object.
         var i = 0;
         while(i < sizeOfCellsToSend) {
-            if (self.dataAccumulator[i] === STATUS_BYTE_FLAG){
+            if (self.dataAccumulator[i] === STATUS_BYTE_FLAG) {
                 var updateFlag = self.dataAccumulator[i + STATUS_DATA_OFFSET];
 
                 // We need to send 4 bytes over as unsigned long.  JS bitwise operations force a signed long, so we are forced to use a float here.
@@ -397,6 +400,30 @@ BrogueInterface.prototype.attachChildEvents = function () {
                 }
                 else {
                     i += EVENT_DATA_LENGTH;
+                }
+            }
+            else if(self.dataAccumulator[i] === INVENTORY_BYTE_FLAG) {
+
+                // We need to send bytes over as unsigned long.  JS bitwise operations force a signed long, so we are forced to use a float here.
+                var inventorySize =
+                    self.dataAccumulator[i + INVENTORY_DATA_OFFSET] * 256 +
+                    self.dataAccumulator[i + INVENTORY_DATA_OFFSET + 1];
+
+                console.log("Inv size: " + inventorySize);
+
+                var inventoryStart = i + INVENTORY_DATA_OFFSET + 2;
+                var inventoryEnd = i + inventorySize;
+
+                var inventoryStr = self.dataAccumulator.slice(inventoryStart, inventoryEnd).toString('utf8');
+                console.log(inventoryStr);
+
+                //Remove this status update from the dataAccumulator
+                if (i + inventorySize <= self.dataAccumulator.length) {
+                    self.dataAccumulator.copy(self.dataAccumulator, i, i + inventorySize);
+                    self.dataAccumulator = self.dataAccumulator.slice(0, self.dataAccumulator.length - inventorySize);
+                }
+                else {
+                    i += inventorySize;
                 }
             }
             else {

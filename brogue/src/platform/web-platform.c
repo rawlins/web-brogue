@@ -16,11 +16,12 @@
 
 #define OUTPUT_SIZE             10
 #define EVENT_SIZE              100
-#define INVENTORY_SIZE          13020
+#define INVENTORY_SIZE          2048
 #define MAX_INPUT_SIZE          5
 #define MOUSE_INPUT_SIZE        4
 #define KEY_INPUT_SIZE          4
 #define OUTPUT_BUFFER_SIZE      1000
+#define INVENTORY_REFRESH_TICKS 1000
 
 //Custom events
 #define REFRESH_SCREEN          50
@@ -41,6 +42,7 @@ static FILE *logfile;
 static char output_buffer[OUTPUT_BUFFER_SIZE];
 static int output_buffer_pos = 0;
 static int refresh_screen_only = 0;
+static int tick_counter = 0;
 
 static void open_logfile();
 static void close_logfile();
@@ -166,6 +168,8 @@ static void web_plotChar(uchar inputChar,
     outputBuffer[7] = (char) backRed * 255 / 100;
     outputBuffer[8] = (char) backGreen * 255 / 100;
     outputBuffer[9] = (char) backBlue * 255 / 100;
+
+    tick_counter++;
     
     write_to_socket(outputBuffer, OUTPUT_SIZE);
 }
@@ -236,7 +240,11 @@ static void web_nextKeyOrMouseEvent(rogueEvent *returnEvent, boolean textInput, 
     // Send a status update of game variables we want on the client
     if(!refresh_screen_only) {
       sendStatusUpdate();
-      send_inventory_update();
+
+      if(tick_counter > INVENTORY_REFRESH_TICKS) {
+        send_inventory_update();
+        tick_counter = 0;
+      }
     }
     refresh_screen_only = 0;
 
@@ -345,18 +353,27 @@ static void send_inventory_update() {
   char statusOutputBuffer[INVENTORY_SIZE];
 
   // Coordinates of (254, 253) will let the server and client know that this is an inventory notification update rather than a cell update
-  statusOutputBuffer[0] = 254;
+  statusOutputBuffer[0] = 253;
   statusOutputBuffer[1] = 253;
 
   // The event id
-  populateInventory(statusOutputBuffer + 2);
+  populateInventory(statusOutputBuffer + 4);
   write_to_log("send inventory\n");
   char msg[80];
   sprintf(msg, "%i", strlen(statusOutputBuffer));
 
-  //write_to_log(msg);
   write_to_log(statusOutputBuffer);
+  write_to_log("\n");
+  write_to_log(msg);
 
+  unsigned int inventoryLength = strlen(statusOutputBuffer) + 4;
+
+  //Size of message
+  statusOutputBuffer[3] = inventoryLength >> 8;
+  statusOutputBuffer[4] = inventoryLength & 0xFF;
+
+  write_to_socket(statusOutputBuffer, inventoryLength);
+  flush_output_buffer();
 }
 
 struct brogueConsole webConsole = {
