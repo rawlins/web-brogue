@@ -243,13 +243,14 @@ button {
     text-align: center;
 }
 
-.console-chat {
+.console-chat,
+.console-inv {
     visibility: hidden;
     display: none;
     box-sizing: border-box;
     -moz-box-sizing: border-box;
     word-wrap: break-word;
-    height: 90%;
+    height: 40%;
 }
 
 .console-chat-inner {
@@ -270,7 +271,8 @@ button {
     clear: left;
 }
 
-.console-chat-messages {
+.console-chat-messages,
+.console-inv-text {
     list-style-type: none;
     padding: 0;
     margin: 0;
@@ -285,7 +287,8 @@ button {
 
 @media screen and (min-width: 700px) {
 
-    .console-chat {
+    .console-chat,
+    .console-inv {
         float: right;
         visibility: inherit;
         display: inherit;

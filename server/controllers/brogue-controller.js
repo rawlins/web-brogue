@@ -4,6 +4,7 @@ var _ = require('underscore');
 
 var router = require('./router');
 var config = require('../config');
+var entities = require('html-entities').AllHtmlEntities;
 
 var Controller = require('./controller-base');
 var brogueState = require('../enum/brogue-state');
@@ -21,6 +22,7 @@ function BrogueController(socket) {
     this.controllerName = "brogue";
     this.socket = socket;
     this.controllers = null;
+    this.Entities = new entities();
 }
 
 BrogueController.prototype = new Controller();
@@ -78,6 +80,7 @@ _.extend(BrogueController.prototype, {
             this.brogueInterface.removeQuitListener(this.quitListener);
             this.brogueInterface.removeErrorListener(this.errorListener);
             this.brogueInterface.removeEventListener(this.eventListener);
+            this.brogueInterface.removeInventoryListener(this.inventoryListener);
         }
     },
 
@@ -90,6 +93,13 @@ _.extend(BrogueController.prototype, {
         //console.log("Error listener" + this.username);
         //TODO: Maybe some UI for the user? This normally occurs on an orphaned process connecting, which is expected behaviour
         this.endBrogueSession();
+    },
+
+    brogueInventoryListener: function (data) {
+
+        var htmlEncodedInventory = this.Entities.encode(data);
+
+        this.sendMessage("inv", htmlEncodedInventory);
     },
 
     brogueEventListener: function (event) {
@@ -295,6 +305,9 @@ _.extend(BrogueController.prototype, {
 
         this.eventListener = this.brogueEventListener.bind(this);
         this.brogueInterface.addEventListener(this.eventListener);
+
+        this.inventoryListener = this.brogueInventoryListener.bind(this);
+        this.brogueInterface.addInventoryListener(this.inventoryListener);
 
         this.statusListener = this.brogueStatusListener.bind(this);
         this.brogueInterface.addStatusListener(this.statusListener);

@@ -42,11 +42,13 @@ require([
     "dataIO/router",
     "models/high-scores",
     "models/chat",
+    "models/inventory",
     "models/site-news-collection",
     "views/view-activation-helpers",
     "views/auth-view",
     "views/chat-view",
     "views/console-chat-view",
+    "views/console-inv-view",
     "views/play-view",
     "views/header-view",
     "views/current-games-view",
@@ -58,7 +60,7 @@ require([
     "views/console-keystroke-processing-view",
     "views/popups/seed-popup-view",
     "views/popups/duplicate-process-popup-view"
-], function( $, _, Backbone, BackbonePaginator, Backgrid, BackgridPaginator, dispatcher, debugMode, socket, router, HighScoresModel, ChatModel, SiteNewsCollection, activate, AuthView, ChatView, ConsoleChatView, PlayView, HeaderView, CurrentGamesView, SavedGamesView, HighScoresView, AllScoresView, SiteNewsView, ConsoleView, ConsoleKeyProcessingView, SeedPopupView, DuplicateBroguePopupView){
+], function( $, _, Backbone, BackbonePaginator, Backgrid, BackgridPaginator, dispatcher, debugMode, socket, router, HighScoresModel, ChatModel, InventoryModel, SiteNewsCollection, activate, AuthView, ChatView, ConsoleChatView, ConsoleInventoryView, PlayView, HeaderView, CurrentGamesView, SavedGamesView, HighScoresView, AllScoresView, SiteNewsView, ConsoleView, ConsoleKeyProcessingView, SeedPopupView, DuplicateBroguePopupView){
     
     // If you want to enable debug mode, uncomment this function
     debugMode();
@@ -72,6 +74,7 @@ require([
     var consoleView = new ConsoleView();
     var chatView = new ChatView({model: new ChatModel()});
     var consoleChatView = new ConsoleChatView({model: new ChatModel()});
+    var inventoryView = new ConsoleInventoryView({model: new InventoryModel()});
     var siteNewsCollection = new SiteNewsCollection();
     siteNewsCollection.addDefaultData();
     var siteNewsView = new SiteNewsView({collection: siteNewsCollection});
@@ -131,6 +134,8 @@ require([
     dispatcher.on("reconnect", authView.requestLogin, authView);
     dispatcher.on("reconnect", consoleView.exitToLobby, consoleView);
 
+    dispatcher.on("inventory", inventoryView.updateInventory, inventoryView);
+
     // set up routes for the messages from the websocket connection (only)
     router.registerHandlers({
         //Must bind 'this' to the scope of the view so we can use the internal view functions
@@ -143,6 +148,7 @@ require([
         "auth" : authView.handleMessage.bind(authView),
         "seed" : popups.seedView.handleMessage.bind(popups.seedView),
         "fail" : function(data) { dispatcher.trigger("fail", data) },
+        "inv" : function(data) { dispatcher.trigger("inventory", data) },
         "duplicate brogue" : popups.duplicateBrogueView.handleMessage.bind(popups.duplicateBrogueView)
     });
 

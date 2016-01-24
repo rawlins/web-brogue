@@ -21,7 +21,7 @@
 #define MOUSE_INPUT_SIZE        4
 #define KEY_INPUT_SIZE          4
 #define OUTPUT_BUFFER_SIZE      1000
-#define INVENTORY_REFRESH_TICKS 1000
+#define INVENTORY_REFRESH_TICKS 10000
 
 //Custom events
 #define REFRESH_SCREEN          50
@@ -362,19 +362,10 @@ static void send_inventory_update() {
   statusOutputBuffer[2] = 253;
   statusOutputBuffer[3] = 253;
 
-  // The event id
   populateInventory(statusOutputBuffer + 4);
-  write_to_log("send inventory\n");
-  char msg[80];
-  sprintf(msg, "%i", strlen(statusOutputBuffer));
-
-  write_to_log(statusOutputBuffer);
-  write_to_log("\n");
-  write_to_log(msg);
-
-  unsigned int inventoryLength = strlen(statusOutputBuffer);
 
   //Size of message
+  unsigned int inventoryLength = strlen(statusOutputBuffer);
   statusOutputBuffer[2] = inventoryLength >> 8;
   statusOutputBuffer[3] = inventoryLength & 0xFF;
 

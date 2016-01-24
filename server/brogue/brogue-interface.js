@@ -63,6 +63,10 @@ BrogueInterface.prototype.addEventListener = function(listener) {
     this.brogueEvents.on('event', listener);
 };
 
+BrogueInterface.prototype.addInventoryListener = function(listener) {
+    this.brogueEvents.on('inv', listener);
+};
+
 BrogueInterface.prototype.removeDataListener = function(listener) {
     this.brogueEvents.removeListener('data', listener);
 };
@@ -81,6 +85,10 @@ BrogueInterface.prototype.removeErrorListener = function(listener) {
 
 BrogueInterface.prototype.removeEventListener = function(listener) {
     this.brogueEvents.removeListener('event', listener);
+};
+
+BrogueInterface.prototype.removeInventoryListener = function(listener) {
+    this.brogueEvents.removeListener('inv', listener);
 };
 
 BrogueInterface.prototype.sendRefreshScreen = function(callback) {
@@ -407,14 +415,12 @@ BrogueInterface.prototype.attachChildEvents = function () {
                     //Partial message, wait for next data
                     break;
                 }
-
-                console.log("Inv size: " + inventorySize);
-
                 var inventoryStart = i + INVENTORY_DATA_OFFSET + 2;
                 var inventoryEnd = i + inventorySize;
 
                 var inventoryStr = self.dataAccumulator.slice(inventoryStart, inventoryEnd).toString('utf8');
-                console.log(inventoryStr);
+
+                self.brogueEvents.emit('inv', inventoryStr);
 
                 i += inventorySize;
             }
