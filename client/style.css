@@ -243,10 +243,15 @@ button {
     text-align: center;
 }
 
+.console-bar {
+    box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    word-wrap: break-word;
+    height: 100%;
+}
+
 .console-chat,
 .console-inv {
-    visibility: hidden;
-    display: none;
     box-sizing: border-box;
     -moz-box-sizing: border-box;
     word-wrap: break-word;
@@ -287,8 +292,7 @@ button {
 
 @media screen and (min-width: 700px) {
 
-    .console-chat,
-    .console-inv {
+    .console-bar {
         float: right;
         visibility: inherit;
         display: inherit;
