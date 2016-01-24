@@ -16,7 +16,7 @@
 
 #define OUTPUT_SIZE             10
 #define EVENT_SIZE              100
-#define INVENTORY_SIZE          2048
+#define INVENTORY_SIZE          3072
 #define MAX_INPUT_SIZE          5
 #define MOUSE_INPUT_SIZE        4
 #define KEY_INPUT_SIZE          4
@@ -118,8 +118,9 @@ int read_from_socket(char *buf, int size) {
 
 static void flush_output_buffer() {
 
-  char msg[80];
-  snprintf(msg, 80, "Flushing at %i\n", output_buffer_pos);
+  //char msg[80];
+  //snprintf(msg, 80, "Flushing at %i\n", output_buffer_pos);
+  //write_to_log(msg);
 
   int no_bytes_sent;
   no_bytes_sent = sendto(wfd, output_buffer, output_buffer_pos, 0, (struct sockaddr *) &addr_write, sizeof(struct sockaddr_un));
@@ -127,6 +128,7 @@ static void flush_output_buffer() {
     char msg[80];
     snprintf(msg, 80, "Sent %ld bytes only %s\n", (long) no_bytes_sent, strerror(errno));
     write_to_log(msg);
+    sleep(1);
   }
 
   output_buffer_pos = 0;
@@ -176,7 +178,7 @@ static void web_plotChar(uchar inputChar,
 
 static void sendStatusUpdate() {
     
-    char statusOutputBuffer[STATUS_TYPES_NUMBER * OUTPUT_SIZE];
+    char statusOutputBuffer[OUTPUT_SIZE];
     
     unsigned long statusValues[STATUS_TYPES_NUMBER]; 
     statusValues[DEEPEST_LEVEL_STATUS] = rogue.deepestLevel;
@@ -309,10 +311,10 @@ static void notify_event(short eventId, int data1, int data2, const char *str1, 
   statusOutputBuffer[2] = eventId;
 
   // I am just going to explicitly send the status big-endian so we can be consistent on the client and server
-  statusOutputBuffer[3] = data1 >> 8 & 0xff;
-  statusOutputBuffer[4] = data1;
-  statusOutputBuffer[5] = data2 >> 8 & 0xff;
-  statusOutputBuffer[6] = data2;
+  statusOutputBuffer[3] = data1 >> 24 & 0xff;
+  statusOutputBuffer[4] = data1 >> 16 & 0xff;
+  statusOutputBuffer[5] = data1 >> 8 & 0xff;
+  statusOutputBuffer[6] = data1;
   statusOutputBuffer[7] = rogue.depthLevel >> 8 & 0xff;
   statusOutputBuffer[8] = rogue.depthLevel;
   statusOutputBuffer[9] = rogue.easyMode >> 8 & 0xff;
@@ -356,6 +358,10 @@ static void send_inventory_update() {
   statusOutputBuffer[0] = 253;
   statusOutputBuffer[1] = 253;
 
+  // Will be overwritten with length
+  statusOutputBuffer[2] = 253;
+  statusOutputBuffer[3] = 253;
+
   // The event id
   populateInventory(statusOutputBuffer + 4);
   write_to_log("send inventory\n");
@@ -366,11 +372,11 @@ static void send_inventory_update() {
   write_to_log("\n");
   write_to_log(msg);
 
-  unsigned int inventoryLength = strlen(statusOutputBuffer) + 4;
+  unsigned int inventoryLength = strlen(statusOutputBuffer);
 
   //Size of message
-  statusOutputBuffer[3] = inventoryLength >> 8;
-  statusOutputBuffer[4] = inventoryLength & 0xFF;
+  statusOutputBuffer[2] = inventoryLength >> 8;
+  statusOutputBuffer[3] = inventoryLength & 0xFF;
 
   write_to_socket(statusOutputBuffer, inventoryLength);
   flush_output_buffer();

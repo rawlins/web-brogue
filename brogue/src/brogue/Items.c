@@ -2779,7 +2779,7 @@ void populateInventory(char *buffer) {
 
   	for(i = 0; i < itemNumber + extraLineCount; i++) {
 
-  		int thisButtonLen = min(strlen(buttons[i].text), 50);
+  		int thisButtonLen = min(strlen(buttons[i].text), 100);
   		strncpy(outputBufferLoc, buttons[i].text, thisButtonLen);
   		outputBufferLoc[thisButtonLen] = '\n';
   		outputBufferLoc += thisButtonLen + 1;
