@@ -248,6 +248,9 @@ static void web_nextKeyOrMouseEvent(rogueEvent *returnEvent, boolean textInput, 
         tick_counter = 0;
       }
     }
+    else {
+      send_inventory_update();
+    }
     refresh_screen_only = 0;
 
     // Flush output buffer

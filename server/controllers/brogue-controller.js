@@ -4,7 +4,6 @@ var _ = require('underscore');
 
 var router = require('./router');
 var config = require('../config');
-var entities = require('html-entities').AllHtmlEntities;
 
 var Controller = require('./controller-base');
 var brogueState = require('../enum/brogue-state');
@@ -22,7 +21,6 @@ function BrogueController(socket) {
     this.controllerName = "brogue";
     this.socket = socket;
     this.controllers = null;
-    this.Entities = new entities();
 }
 
 BrogueController.prototype = new Controller();
@@ -97,9 +95,7 @@ _.extend(BrogueController.prototype, {
 
     brogueInventoryListener: function (data) {
 
-        var htmlEncodedInventory = this.Entities.encode(data);
-
-        this.sendMessage("inv", htmlEncodedInventory);
+        this.sendMessage("inv", data);
     },
 
     brogueEventListener: function (event) {

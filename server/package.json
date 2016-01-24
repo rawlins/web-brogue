@@ -26,7 +26,6 @@
     "express-paginate": "^0.0.8",
     "client-sessions": "^0.7.0",
     "morgan": "^1.6.1",
-    "socket.io": "^1.0.0",
-    "html-entities": "1.2.0"
+    "socket.io": "^1.0.0"
   }
 }

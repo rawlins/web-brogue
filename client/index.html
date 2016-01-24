@@ -95,7 +95,12 @@
 
 <script id="console-inv-template" type="text/template">
     <h2>Inventory</h2>
-    <div class="console-inv-text"><%= inventory %></div>
+    <ul id="console-inv-list" class="console-inv-list">
+    </ul>
+</script>
+
+<script id="console-inv-row-template" type="text/template">
+    <li><%= item %></li>
 </script>
 
 <script id="console-chat-template" type="text/template">
