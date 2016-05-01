@@ -5,11 +5,12 @@ define([
     "underscore",
     "backbone",
     "dispatcher",
+    "pixi",
     'dataIO/send-keypress',
     "views/console-cell-view",
     "models/console-cell",
     "views/view-activation-helpers"
-], function($, _, Backbone, dispatcher, sendKeypressEvent, ConsoleCellView, CellModel, activate) {
+], function($, _, Backbone, dispatcher, PIXI, sendKeypressEvent, ConsoleCellView, CellModel, activate) {
 
     var _CONSOLE_ROWS = 34;
     var _CONSOLE_COLUMNS = 100;
@@ -32,15 +33,96 @@ define([
             'focus' : 'giveKeyboardFocus'
         },
         initialize: function() {
-            this.$el.addClass("full-height");
 
             this.calculateConsoleSize();
             this.calculateConsoleCellSize();
 
             this.initializeConsoleCells();
+
+            var canvasWidth = 800;
+            var canvasHeight = 600;
+
+            var renderer = PIXI.autoDetectRenderer(canvasWidth, canvasHeight,{backgroundColor : 0x1099bb});
+            this.$el.append(renderer.view);
+
+            // create the root of the scene graph
+            var stage = new PIXI.Container();
+
+            //var basicText = new PIXI.Text('Basic text in pixi');
+            //basicText.x = 30;
+            //basicText.y = 90;
+
+            //stage.addChild(basicText);
+
+            // start animating
+            animate();
+
+            function animate() {
+
+                for (var i = 0; i < _CONSOLE_COLUMNS; i++) {
+                    for (var j = 0; j < _CONSOLE_ROWS; j++) {
+
+                        var cellModel = _consoleCells[i][j].model;
+
+                        var rgbForegroundString = "rgb(" +
+                            cellModel.get("foregroundRed") + "," +
+                            cellModel.get("foregroundGreen") + "," +
+                            cellModel.get("foregroundBlue") + ")";
+                        var rgbBackgroundString = "rgb(" +
+                            cellModel.get("backgroundRed") + "," +
+                            cellModel.get("backgroundGreen") + "," +
+                            cellModel.get("backgroundBlue") + ")";
+
+                        var cellChar = String.fromCharCode(cellModel.get("char"));
+
+                        var width = cellModel.get("widthPercent");
+                        var height = cellModel.get("heightPercent");
+                        var left = cellModel.get("leftPositionPercent");
+                        var top = cellModel.get("topPositionPercent");
+                        var fontSize = cellModel.get("charSizePx") + "px";
+                        var paddingTop = cellModel.get("charPaddingPx") + "px";
+
+
+                        var style = {
+                            font: fontSize + " " + '"Lucida Console", Monaco, monospace',
+                            fill: rgbForegroundString
+                        };
+
+                        //console.log(cellChar);
+                        //console.log(JSON.stringify(style));
+
+                        if(cellModel.get("charSizePx") > 0 && cellModel.get("dirty")) {
+
+                            if(_consoleCells[i][j].model.get("pixiText")) {
+                                stage.removeChild(_consoleCells[i][j].model.get("pixiText"));
+                            }
+
+                            var cellText = new PIXI.Text(cellChar, style);
+                            cellText.x = canvasWidth * left / 100;
+                            cellText.y = canvasHeight * top / 100;
+
+                            //console.log("x: " + cellText.x + " y: " + cellText.y);
+                            stage.addChild(cellText);
+
+                            _consoleCells[i][j].model.set({
+                                "pixiText": cellText,
+                                "dirty": false } );
+                        }
+                    }
+                }
+
+                requestAnimationFrame(animate);
+
+                // render the root container
+                renderer.render(stage);
+            }
+
+            this.$el.addClass("full-height");
+
         },
         initializeConsoleCells: function() {
-            var consoleCellsFragment = document.createDocumentFragment();
+
+            //var consoleCellsFragment = document.createDocumentFragment();
             
             for (var i = 0; i < _CONSOLE_COLUMNS; i++) {
                 var column = [];
@@ -61,19 +143,21 @@ define([
                         id: "console-cell-" + i + "-" + j
                     });
 
-                    consoleCellsFragment.appendChild(cellView.render().el);
+                    //consoleCellsFragment.appendChild(cellView.render().el);
                     column.push(cellView);
                 }
                 _consoleCells.push(column);
             }
             
-            this.$el.append(consoleCellsFragment);
+            //this.$el.append(consoleCellsFragment);
+
         },
         calculateConsoleSize: function() {
             _consoleWidth = this.$el.width();
             _consoleHeight = this.$el.height();
         },
         calculateConsoleCellSize: function() {
+
             _consoleCellWidthPercent = 100 / _CONSOLE_COLUMNS;
 
             // Cell Aspect Ratio
@@ -162,10 +246,11 @@ define([
                     foregroundBlue: dataArray[dIndex++],
                     backgroundRed: dataArray[dIndex++],
                     backgroundGreen: dataArray[dIndex++],
-                    backgroundBlue: dataArray[dIndex++]
+                    backgroundBlue: dataArray[dIndex++],
+                    dirty: true
                 });
 
-                _consoleCells[dataXCoord][dataYCoord].render();
+                //_consoleCells[dataXCoord][dataYCoord].render();
             }
         },
         
