@@ -10,9 +10,12 @@ require.config({
         backgrid: "libs/backgrid",
         backgridPaginator: "libs/backgrid-paginator",
         io: "libs/socket.io",
-        pixi: "libs/pixi"
+        ROT: "libs/rot"
     },
     shim: {
+        'ROT': {
+            exports: 'ROT'
+        },
         'backbone': {
             deps: ['underscore', 'jquery'],
             exports: "Backbone"

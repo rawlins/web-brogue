@@ -5,17 +5,18 @@ define([
     "underscore",
     "backbone",
     "dispatcher",
-    "pixi",
+    "ROT",
     'dataIO/send-keypress',
     "views/console-cell-view",
     "models/console-cell",
     "views/view-activation-helpers"
-], function($, _, Backbone, dispatcher, PIXI, sendKeypressEvent, ConsoleCellView, CellModel, activate) {
+], function($, _, Backbone, dispatcher, ROT, sendKeypressEvent, ConsoleCellView, CellModel, activate) {
 
     var _CONSOLE_ROWS = 34;
     var _CONSOLE_COLUMNS = 100;
     var _MESSAGE_UPDATE_SIZE = 10;
 
+    var _display;
     var _consoleCells = [];
     var _consoleWidth;
     var _consoleHeight;
@@ -32,17 +33,7 @@ define([
         events: {
             'focus': 'giveKeyboardFocus'
         },
-        rectangle: function (x, y, width, height, backgroundColor)
-        {
-            var box = new PIXI.Graphics();
-            box.beginFill(backgroundColor);
-            box.drawRect(0, 0, width, height);
-            box.endFill();
-            box.position.x = x;
-            box.position.y = y;
-            //console.log("x: " + box.position.x + " y: " + box.position.y);
-            return box;
-        },
+
         initialize: function() {
 
             this.calculateConsoleSize();
@@ -53,138 +44,58 @@ define([
             var canvasWidth = 1200;
             var canvasHeight = 600;
 
-            var renderer = PIXI.autoDetectRenderer(canvasWidth, canvasHeight,{backgroundColor : 0x1099bb});
-            this.$el.append(renderer.view);
+            _display = new ROT.Display();
+            _display.setOptions({
+                width: _CONSOLE_COLUMNS,
+                height: _CONSOLE_ROWS,
+                fontSize: 18,
+                fontStyle: "bold"
+            });
 
-            // create the root of the scene graph
-            var stage = new PIXI.Container();
+            var canvas = _display.getContainer();
 
-            //var basicText = new PIXI.Text('Basic text in pixi');
-            //basicText.x = 30;
-            //basicText.y = 90;
-
-            //stage.addChild(basicText);
-
-            //var assetsToLoader = [];
-            /*
-            var loader = PIXI.loader; // pixi exposes a premade instance for you to use.
-//or
-            var loader = new PIXI.loaders.Loader(); // you can also create your own if you want
-
-            loader.add('couriernew.xml');
-
-            loader.once('complete',onAssetsLoaded);
-
-            loader.load();
-            */
-            function onAssetsLoaded()
-            {
-                // start animating
-                animate();
-            }
-
-            var self = this;
-
-            function animate() {
-
-                //console.log("running frame");
-                var requireRedraw = false;
-
-                for (var i = 0; i < _CONSOLE_COLUMNS; i++) {
-                    for (var j = 0; j < _CONSOLE_ROWS; j++) {
-
-                        var cellModel = _consoleCells[i][j].model;
-
-                        if (cellModel.get("dirty")) {
-
-                            //console.log("rendering dirty");
-
-                            var rgbForegroundString = "rgb(" +
-                                cellModel.get("foregroundRed") + "," +
-                                cellModel.get("foregroundGreen") + "," +
-                                cellModel.get("foregroundBlue") + ")";
-                            var rgbBackgroundString = "rgb(" +
-                                cellModel.get("backgroundRed") + "," +
-                                cellModel.get("backgroundGreen") + "," +
-                                cellModel.get("backgroundBlue") + ")";
-
-                            var backgroundColor = (256 * 256) * cellModel.get("backgroundRed") +
-                                256 * cellModel.get("backgroundGreen") +
-                                cellModel.get("backgroundBlue");
-
-
-                            var cellChar = String.fromCharCode(cellModel.get("char"));
-
-                            var width = cellModel.get("widthPercent");
-                            var height = cellModel.get("heightPercent");
-                            var left = cellModel.get("leftPositionPercent");
-                            var top = cellModel.get("topPositionPercent");
-                            var fontSize = (cellModel.get("charSizePx") ).toString() + "px";
-                            var paddingTop = cellModel.get("charPaddingPx") + "px";
-
-                            var fontStr = fontSize + " " + '"Lucida Console", Monaco, monospace';
-                            //console.log(fontStr);
-
-                            var style = {
-                                font: fontStr,
-                                fill: rgbForegroundString
-                            };
-
-                            //console.log(cellChar);
-                            //console.log(JSON.stringify(style));
-
-                            if (cellModel.get("charSizePx") > 0) {
-
-                                var cellX = canvasWidth * left / 100;
-                                var cellY = canvasHeight * top / 100;
-
-                                var cellWidth = canvasWidth * width / 100;
-                                var cellHeight = canvasHeight * height / 100;
-
-                                //Cleanup
-                                if (_consoleCells[i][j].model.get("pixiRect")) {
-                                    stage.removeChild(_consoleCells[i][j].model.get("pixiRect"));
-                                }
-
-                                if (_consoleCells[i][j].model.get("pixiText")) {
-                                    stage.removeChild(_consoleCells[i][j].model.get("pixiText"));
-                                }
-
-                                //Background
-                                var cellRect = self.rectangle(cellX, cellY, cellWidth, cellHeight, backgroundColor);
-                                stage.addChild(cellRect);
-
-                                //Foreground text
-                                var cellText = new PIXI.Text(cellChar, style); //very slow
-                                cellText.x = cellX;
-                                cellText.y = cellY;
-
-                                //console.log("x: " + cellText.x + " y: " + cellText.y);
-                                stage.addChild(cellText);
-
-                                requireRedraw = true;
-
-                                _consoleCells[i][j].model.set({
-                                    "pixiText": cellText,
-                                    "pixiRect": cellRect,
-                                    "dirty": false });
-                            }
-                        }
-                    }
-                }
-
-                requestAnimationFrame(animate);
-
-                // render the root container
-                if(requireRedraw) {
-                    renderer.render(stage);
-                }
-            }
-
-            animate();
+            this.$el.append(canvas);
 
             this.$el.addClass("full-height");
 
+            this.renderer();
+
+        },
+
+        renderer: function() {
+
+            //console.log("render");
+
+            var toHex = function(n) {
+                return ("00" + n.toString(16)).substr(-2);
+            }
+
+            for (var i = 0; i < _CONSOLE_COLUMNS; i++) {
+                for (var j = 0; j < _CONSOLE_ROWS; j++) {
+
+                    var cellModel = _consoleCells[i][j].model;
+
+                    var rgbForegroundString = "#" +
+                        toHex(cellModel.get("foregroundRed")) +
+                        toHex(cellModel.get("foregroundGreen")) +
+                        toHex(cellModel.get("foregroundBlue"));
+                    var rgbBackgroundString = "#" +
+                        toHex(cellModel.get("backgroundRed")) +
+                        toHex(cellModel.get("backgroundGreen")) +
+                        toHex(cellModel.get("backgroundBlue"));
+
+                    var cellChar = String.fromCharCode(cellModel.get("char"));
+
+                    //
+
+                    if(cellModel.get("dirty")) {
+                        //console.log(i + " " + j + " " + cellChar + " " + rgbForegroundString + " " + rgbBackgroundString);
+                        _display.draw(i, j, cellChar, rgbForegroundString, rgbBackgroundString);
+                        //_display.draw(i, j, "@");
+                        cellModel.set({"dirty": false});
+                    }
+                }
+            }
         },
         initializeConsoleCells: function() {
 
@@ -254,14 +165,6 @@ define([
             _consoleCellCharSizePx = cellPixelHeight * 3 / 5;
             _consoleCellCharPaddingPx = cellPixelHeight / 10;
         },
-        render: function() {
-            for (var i = 0; i < _CONSOLE_COLUMNS; i++) {
-                for (var j = 0; j < _CONSOLE_ROWS; j++) {
-                    _consoleCells[i][j].render();
-                }
-            }
-        },
-
         resize: function() {
             this.calculateConsoleSize();
             this.calculateConsoleCellSize();
@@ -320,15 +223,18 @@ define([
 
                 //_consoleCells[dataXCoord][dataYCoord].render();
             }
+
+            this.renderer();
         },
         
         clearConsole : function(){
             for (var i = 0; i < _CONSOLE_COLUMNS; i++) {
                 for (var j = 0; j < _CONSOLE_ROWS; j++) {
                     _consoleCells[i][j].model.clear();
-                    _consoleCells[i][j].render();
+                    //_consoleCells[i][j].render();
                 }
             }
+            //this.renderer();
         },
         
         giveKeyboardFocus : function(){
