@@ -26,7 +26,7 @@ define([
     var _consoleCellHeightPercent;
     var _consoleCellCharSizePx;
     var _consoleCellCharPaddingPx;
-    var _consoleCellAspectRatio = 0.53;  //TODO: we may eventually want this to be adjustable
+    var _consoleCellAspectRatio = 0.61;  //TODO: we may eventually want this to be adjustable
 
     var Console = Backbone.View.extend({
         el: "#console",
@@ -49,7 +49,7 @@ define([
                 width: _CONSOLE_COLUMNS,
                 height: _CONSOLE_ROWS,
                 fontFamily: "Source Code Pro, monospace",
-                fontSize: 16,
+                fontSize: 18,
                 spacing: 1.4
             });
 
@@ -69,7 +69,7 @@ define([
 
             var toHex = function(n) {
                 return ("00" + n.toString(16)).substr(-2);
-            }
+            };
 
             for (var i = 0; i < _CONSOLE_COLUMNS; i++) {
                 for (var j = 0; j < _CONSOLE_ROWS; j++) {
@@ -163,14 +163,22 @@ define([
             }
 
             // Cell Character Positioning
-            _consoleCellCharSizePx = cellPixelHeight * 3 / 5;
+            _consoleCellCharSizePx = cellPixelHeight * 0.65;
             _consoleCellCharPaddingPx = cellPixelHeight / 10;
         },
         resize: function() {
             this.calculateConsoleSize();
             this.calculateConsoleCellSize();
+
+            _display.setOptions({
+                fontSize: _consoleCellCharSizePx
+            });
+
+            console.log("fontSize " + _consoleCellCharSizePx );
+
             for (var i = 0; i < _CONSOLE_COLUMNS; i++) {
                 for (var j = 0; j < _CONSOLE_ROWS; j++) {
+                    /*
                     _consoleCells[i][j].model.set({
                         widthPercent: _consoleCellWidthPercent,
                         heightPercent: _consoleCellHeightPercent,
@@ -178,9 +186,9 @@ define([
                         charPaddingPx: _consoleCellCharPaddingPx,
                         topOffsetPercent: _consoleCellTopOffsetPercent,
                         leftOffsetPercent: _consoleCellLeftOffsetPercent
-                    });
-                    _consoleCells[i][j].model.calculatePositionAttributes();
-                    _consoleCells[i][j].applySize();
+                    });*/
+                    //_consoleCells[i][j].model.calculatePositionAttributes();
+                    //_consoleCells[i][j].applySize();
                     _consoleCells[i][j].model.set({
                         "dirty": true });
                 }
@@ -235,7 +243,7 @@ define([
                     //_consoleCells[i][j].render();
                 }
             }
-            //this.renderer();
+            this.renderer();
         },
         
         giveKeyboardFocus : function(){
