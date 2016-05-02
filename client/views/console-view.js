@@ -48,8 +48,9 @@ define([
             _display.setOptions({
                 width: _CONSOLE_COLUMNS,
                 height: _CONSOLE_ROWS,
-                fontSize: 18,
-                fontStyle: "bold"
+                fontFamily: "Source Code Pro, monospace",
+                fontSize: 16,
+                spacing: 1.4
             });
 
             var canvas = _display.getContainer();
