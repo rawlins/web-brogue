@@ -30,7 +30,18 @@ define([
     var Console = Backbone.View.extend({
         el: "#console",
         events: {
-            'focus' : 'giveKeyboardFocus'
+            'focus': 'giveKeyboardFocus'
+        },
+        rectangle: function (x, y, width, height, backgroundColor)
+        {
+            var box = new PIXI.Graphics();
+            box.beginFill(backgroundColor);
+            box.drawRect(0, 0, width, height);
+            box.endFill();
+            box.position.x = x;
+            box.position.y = y;
+            //console.log("x: " + box.position.x + " y: " + box.position.y);
+            return box;
         },
         initialize: function() {
 
@@ -39,7 +50,7 @@ define([
 
             this.initializeConsoleCells();
 
-            var canvasWidth = 800;
+            var canvasWidth = 1200;
             var canvasHeight = 600;
 
             var renderer = PIXI.autoDetectRenderer(canvasWidth, canvasHeight,{backgroundColor : 0x1099bb});
@@ -54,59 +65,110 @@ define([
 
             //stage.addChild(basicText);
 
-            // start animating
-            animate();
+            //var assetsToLoader = [];
+            /*
+            var loader = PIXI.loader; // pixi exposes a premade instance for you to use.
+//or
+            var loader = new PIXI.loaders.Loader(); // you can also create your own if you want
+
+            loader.add('couriernew.xml');
+
+            loader.once('complete',onAssetsLoaded);
+
+            loader.load();
+            */
+            function onAssetsLoaded()
+            {
+                // start animating
+                animate();
+            }
+
+            var self = this;
 
             function animate() {
+
+                //console.log("running frame");
+                var requireRedraw = false;
 
                 for (var i = 0; i < _CONSOLE_COLUMNS; i++) {
                     for (var j = 0; j < _CONSOLE_ROWS; j++) {
 
                         var cellModel = _consoleCells[i][j].model;
 
-                        var rgbForegroundString = "rgb(" +
-                            cellModel.get("foregroundRed") + "," +
-                            cellModel.get("foregroundGreen") + "," +
-                            cellModel.get("foregroundBlue") + ")";
-                        var rgbBackgroundString = "rgb(" +
-                            cellModel.get("backgroundRed") + "," +
-                            cellModel.get("backgroundGreen") + "," +
-                            cellModel.get("backgroundBlue") + ")";
+                        if (cellModel.get("dirty")) {
 
-                        var cellChar = String.fromCharCode(cellModel.get("char"));
+                            //console.log("rendering dirty");
 
-                        var width = cellModel.get("widthPercent");
-                        var height = cellModel.get("heightPercent");
-                        var left = cellModel.get("leftPositionPercent");
-                        var top = cellModel.get("topPositionPercent");
-                        var fontSize = cellModel.get("charSizePx") + "px";
-                        var paddingTop = cellModel.get("charPaddingPx") + "px";
+                            var rgbForegroundString = "rgb(" +
+                                cellModel.get("foregroundRed") + "," +
+                                cellModel.get("foregroundGreen") + "," +
+                                cellModel.get("foregroundBlue") + ")";
+                            var rgbBackgroundString = "rgb(" +
+                                cellModel.get("backgroundRed") + "," +
+                                cellModel.get("backgroundGreen") + "," +
+                                cellModel.get("backgroundBlue") + ")";
+
+                            var backgroundColor = (256 * 256) * cellModel.get("backgroundRed") +
+                                256 * cellModel.get("backgroundGreen") +
+                                cellModel.get("backgroundBlue");
 
 
-                        var style = {
-                            font: fontSize + " " + '"Lucida Console", Monaco, monospace',
-                            fill: rgbForegroundString
-                        };
+                            var cellChar = String.fromCharCode(cellModel.get("char"));
 
-                        //console.log(cellChar);
-                        //console.log(JSON.stringify(style));
+                            var width = cellModel.get("widthPercent");
+                            var height = cellModel.get("heightPercent");
+                            var left = cellModel.get("leftPositionPercent");
+                            var top = cellModel.get("topPositionPercent");
+                            var fontSize = (cellModel.get("charSizePx") ).toString() + "px";
+                            var paddingTop = cellModel.get("charPaddingPx") + "px";
 
-                        if(cellModel.get("charSizePx") > 0 && cellModel.get("dirty")) {
+                            var fontStr = fontSize + " " + '"Lucida Console", Monaco, monospace';
+                            //console.log(fontStr);
 
-                            if(_consoleCells[i][j].model.get("pixiText")) {
-                                stage.removeChild(_consoleCells[i][j].model.get("pixiText"));
+                            var style = {
+                                font: fontStr,
+                                fill: rgbForegroundString
+                            };
+
+                            //console.log(cellChar);
+                            //console.log(JSON.stringify(style));
+
+                            if (cellModel.get("charSizePx") > 0) {
+
+                                var cellX = canvasWidth * left / 100;
+                                var cellY = canvasHeight * top / 100;
+
+                                var cellWidth = canvasWidth * width / 100;
+                                var cellHeight = canvasHeight * height / 100;
+
+                                //Cleanup
+                                if (_consoleCells[i][j].model.get("pixiRect")) {
+                                    stage.removeChild(_consoleCells[i][j].model.get("pixiRect"));
+                                }
+
+                                if (_consoleCells[i][j].model.get("pixiText")) {
+                                    stage.removeChild(_consoleCells[i][j].model.get("pixiText"));
+                                }
+
+                                //Background
+                                var cellRect = self.rectangle(cellX, cellY, cellWidth, cellHeight, backgroundColor);
+                                stage.addChild(cellRect);
+
+                                //Foreground text
+                                var cellText = new PIXI.Text(cellChar, style); //very slow
+                                cellText.x = cellX;
+                                cellText.y = cellY;
+
+                                //console.log("x: " + cellText.x + " y: " + cellText.y);
+                                stage.addChild(cellText);
+
+                                requireRedraw = true;
+
+                                _consoleCells[i][j].model.set({
+                                    "pixiText": cellText,
+                                    "pixiRect": cellRect,
+                                    "dirty": false });
                             }
-
-                            var cellText = new PIXI.Text(cellChar, style);
-                            cellText.x = canvasWidth * left / 100;
-                            cellText.y = canvasHeight * top / 100;
-
-                            //console.log("x: " + cellText.x + " y: " + cellText.y);
-                            stage.addChild(cellText);
-
-                            _consoleCells[i][j].model.set({
-                                "pixiText": cellText,
-                                "dirty": false } );
                         }
                     }
                 }
@@ -114,8 +176,12 @@ define([
                 requestAnimationFrame(animate);
 
                 // render the root container
-                renderer.render(stage);
+                if(requireRedraw) {
+                    renderer.render(stage);
+                }
             }
+
+            animate();
 
             this.$el.addClass("full-height");
 
@@ -211,6 +277,8 @@ define([
                     });
                     _consoleCells[i][j].model.calculatePositionAttributes();
                     _consoleCells[i][j].applySize();
+                    _consoleCells[i][j].model.set({
+                        "dirty": true });
                 }
             }
         },
