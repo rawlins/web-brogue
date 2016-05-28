@@ -424,13 +424,14 @@ BrogueInterface.prototype.attachChildEvents = function () {
     this.brogueSocket.on('error', function(err) {
         console.log('Error when writing to client socket: ' + err);
         console.log("xx" + err + "xx");
+        console.log("xx" + err.id + "xx");
         //err = 111
         //This occurs when we connected to an orphaned brogue process and it exits
         //Therefore we set ourselves into an ended state so a new game can be started
 
         //err = 11
         //This occurs brogue has gone non-responsive and the input buffer is full
-        if(err !== "Error: send -11") {
+        if(err.id != -11) {
             console.log("sending reset");
             self.resetBrogueConnection(self);
             self.brogueEvents.emit('quit', 'Error when writing to client socket - normally brogue has exited');
