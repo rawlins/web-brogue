@@ -266,7 +266,7 @@ BrogueInterface.prototype.attachChildEvents = function () {
 
         var remainderLength = self.dataRemainder.length;
 
-        //console.log("d: " + data.length);
+        console.log("d: " + data.length);
 
         //fill the data buffer with the remainder from last time and the new data
         self.dataAccumulator = new Buffer(data.length + remainderLength);

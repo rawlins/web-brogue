@@ -223,6 +223,11 @@ static boolean web_pauseForMilliseconds(short milliseconds)
   timeout.tv_sec  = 0;
   timeout.tv_usec = 0;
 
+
+char msg[80];
+sprintf(msg, "web pause: %i\n", milliseconds);
+  write_to_log(msg);
+
   return select(rfd + 1, &input, NULL, NULL, &timeout);
 }
 
@@ -230,6 +235,8 @@ static void web_nextKeyOrMouseEvent(rogueEvent *returnEvent, boolean textInput, 
 {
     // because we will halt execution until we get more input, we definitely cannot have any dancing colors from the server side.
     colorsDance = false;
+
+    write_to_log("waiting for keypress\n");
     
     // We must avoid the main menu, so we spawn this process with noMenu, and quit instead of going to the menu
     if (noMenu && rogue.nextGame == NG_NOTHING) rogue.nextGame = NG_QUIT;
@@ -275,6 +282,8 @@ static void web_nextKeyOrMouseEvent(rogueEvent *returnEvent, boolean textInput, 
         returnEvent->param2 = inputBuffer[2];  //y coord
         returnEvent->controlKey = inputBuffer[3];
         returnEvent->shiftKey = inputBuffer[4];
+
+        write_to_log("mouse event\n");
     }
     
 }
