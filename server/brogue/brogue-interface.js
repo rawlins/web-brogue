@@ -429,7 +429,9 @@ BrogueInterface.prototype.attachChildEvents = function () {
 
         //err = 11
         //This occurs brogue has gone non-responsive and the input buffer is full
-        self.resetBrogueConnection(self);
+        if(err != 11) {
+            self.resetBrogueConnection(self);
+        }
 
         self.brogueEvents.emit('quit', 'Error when writing to client socket - normally brogue has exited');
     });
