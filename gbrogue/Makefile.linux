@@ -6,7 +6,7 @@ RELEASENAME=brogue-1.7.4
 CC ?= gcc
 
 %.o : %.c Makefile gBrogueCode/Rogue.h gBrogueCode/IncludeGlobals.h
-	$(CC) $(CFLAGS) -o $@ -c $< 
+	$(CC) $(CFLAGS) -g -o $@ -c $< 
 
 BROGUEFILES=gBrogueCode/Architect.o \
 	gBrogueCode/Combat.o \
